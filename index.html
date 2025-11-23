@@ -1223,7 +1223,7 @@
     </div>
 
     <script>
-         // =============================================
+    // =============================================
     // CLOUD STORAGE WITH JSONBIN.IO (FIXED VERSION)
     // =============================================
     
@@ -1270,13 +1270,19 @@
             try {
                 console.log('💾 Saving donors to JSONBin.io...');
                 
+                // Remove profile pictures to avoid size limits
+                const donorsWithoutImages = donors.map(donor => {
+                    const { profilePicture, ...donorWithoutImage } = donor;
+                    return donorWithoutImage;
+                });
+                
                 const response = await fetch(`${this.baseUrl}/${this.binId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Master-Key': this.apiKey
                     },
-                    body: JSON.stringify({ donors })
+                    body: JSON.stringify({ donors: donorsWithoutImages })
                 });
                 
                 if (!response.ok) {
@@ -1285,7 +1291,7 @@
                 
                 console.log('✅ Donors saved to JSONBin.io');
                 
-                // Update localStorage as backup
+                // Update localStorage (with images for local use)
                 localStorage.setItem('lifeshare-donors', JSON.stringify(donors));
                 
                 return true;
@@ -1426,7 +1432,7 @@
     }
 
     // =============================================
-    // APPLICATION CODE (REST REMAINS THE SAME)
+    // APPLICATION CODE
     // =============================================
 
     // Initialize storage
@@ -1451,7 +1457,8 @@
             notification.classList.remove('show');
         }, duration);
     }
-// Tab switching functionality
+
+    // Tab switching functionality
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', function() {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1470,249 +1477,222 @@
         });
     });
 
-        // Function to display donors
-        async function displayDonors(donors = null) {
-            const donorsList = document.getElementById('donorsList');
-            const donorsToDisplay = donors || await dataStorage.loadDonors();
-            const donorCountBadge = document.getElementById('donorCountBadge');
+    // Function to display donors
+    async function displayDonors(donors = null) {
+        const donorsList = document.getElementById('donorsList');
+        const donorsToDisplay = donors || await dataStorage.loadDonors();
+        const donorCountBadge = document.getElementById('donorCountBadge');
+        
+        donorCountBadge.textContent = donorsToDisplay.length;
+        donorsList.innerHTML = '';
+        
+        if (donorsToDisplay.length === 0) {
+            donorsList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-user-slash"></i>
+                    <h3>No Donors Found</h3>
+                    <p>No donors are currently registered. Be the first to register as a blood donor and help save lives!</p>
+                    <button class="btn mt-4" onclick="document.querySelector('[data-tab=\\'register\\']').click()">
+                        <i class="fas fa-user-plus"></i>
+                        Register as Donor
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        // Sort donors by most recent first
+        donorsToDisplay.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
+        donorsToDisplay.forEach(donor => {
+            const eligibility = dataStorage.getEligibilityStatus(donor.lastDonation);
+            const statusClass = eligibility.eligible ? 'status-eligible' : 'status-not-eligible';
             
-            donorCountBadge.textContent = donorsToDisplay.length;
-            donorsList.innerHTML = '';
-            
-            if (donorsToDisplay.length === 0) {
-                donorsList.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-user-slash"></i>
-                        <h3>No Donors Found</h3>
-                        <p>No donors are currently registered. Be the first to register as a blood donor and help save lives!</p>
-                        <button class="btn mt-4" onclick="document.querySelector('[data-tab=\\'register\\']').click()">
-                            <i class="fas fa-user-plus"></i>
-                            Register as Donor
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Sort donors by most recent first
-            donorsToDisplay.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            
-            donorsToDisplay.forEach(donor => {
-                const eligibility = dataStorage.getEligibilityStatus(donor.lastDonation);
-                const statusClass = eligibility.eligible ? 'status-eligible' : 'status-not-eligible';
+            const donorCard = document.createElement('div');
+            donorCard.className = 'donor-card';
+            donorCard.innerHTML = `
+                ${donor.profilePicture ? 
+                    `<img src="${donor.profilePicture}" class="profile-picture" alt="${donor.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
+                    ''
+                }
+                <div class="profile-picture" style="${donor.profilePicture ? 'display:none' : ''}">
+                    <i class="fas fa-user"></i>
+                </div>
                 
-                const donorCard = document.createElement('div');
-                donorCard.className = 'donor-card';
-                donorCard.innerHTML = `
-                    ${donor.profilePicture ? 
-                        `<img src="${donor.profilePicture}" class="profile-picture" alt="${donor.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
-                        ''
-                    }
-                    <div class="profile-picture" style="${donor.profilePicture ? 'display:none' : ''}">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    
-                    <div class="donor-blood">${donor.bloodType || 'Unknown'}</div>
-                    <div class="donor-name">${donor.name}</div>
-                    
-                    <div class="donor-location">
-                        <i class="fas fa-map-marker-alt"></i>
-                        ${donor.district}, ${donor.city}
-                    </div>
-                    
-                    <div class="donor-contact">
-                        <a href="tel:${donor.phone}">
-                            <i class="fas fa-phone"></i>
-                            ${donor.phone}
-                        </a>
-                    </div>
-                    
-                    <div class="donor-status ${statusClass}">
-                        <i class="fas ${eligibility.icon}"></i>
-                        ${eligibility.message}
-                    </div>
-                    
-                    <div class="donor-actions">
-                        <button class="btn btn-outline btn-small edit-donor" data-id="${donor.id}">
-                            <i class="fas fa-edit"></i>
-                            Update
+                <div class="donor-blood">${donor.bloodType || 'Unknown'}</div>
+                <div class="donor-name">${donor.name}</div>
+                
+                <div class="donor-location">
+                    <i class="fas fa-map-marker-alt"></i>
+                    ${donor.district}, ${donor.city}
+                </div>
+                
+                <div class="donor-contact">
+                    <a href="tel:${donor.phone}">
+                        <i class="fas fa-phone"></i>
+                        ${donor.phone}
+                    </a>
+                </div>
+                
+                <div class="donor-status ${statusClass}">
+                    <i class="fas ${eligibility.icon}"></i>
+                    ${eligibility.message}
+                </div>
+                
+                <div class="donor-actions">
+                    <button class="btn btn-outline btn-small edit-donor" data-id="${donor.id}">
+                        <i class="fas fa-edit"></i>
+                        Update
+                    </button>
+                    ${isAdminLoggedIn ? `
+                        <button class="btn btn-danger btn-small delete-donor" data-id="${donor.id}">
+                            <i class="fas fa-trash"></i>
+                            Delete
                         </button>
-                        ${isAdminLoggedIn ? `
-                            <button class="btn btn-danger btn-small delete-donor" data-id="${donor.id}">
-                                <i class="fas fa-trash"></i>
-                                Delete
-                            </button>
-                        ` : ''}
-                    </div>
-                `;
-                donorsList.appendChild(donorCard);
+                    ` : ''}
+                </div>
+            `;
+            donorsList.appendChild(donorCard);
+        });
+        
+        // Add event listeners to edit buttons
+        document.querySelectorAll('.edit-donor').forEach(button => {
+            button.addEventListener('click', function() {
+                const donorId = this.getAttribute('data-id');
+                openEditModal(donorId);
             });
-            
-            // Add event listeners to edit buttons
-            document.querySelectorAll('.edit-donor').forEach(button => {
+        });
+        
+        // Add event listeners to delete buttons (if admin is logged in)
+        if (isAdminLoggedIn) {
+            document.querySelectorAll('.delete-donor').forEach(button => {
                 button.addEventListener('click', function() {
                     const donorId = this.getAttribute('data-id');
-                    openEditModal(donorId);
+                    openDeleteModal(donorId);
                 });
             });
-            
-            // Add event listeners to delete buttons (if admin is logged in)
-            if (isAdminLoggedIn) {
-                document.querySelectorAll('.delete-donor').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const donorId = this.getAttribute('data-id');
-                        openDeleteModal(donorId);
-                    });
-                });
-            }
         }
+    }
 
-        // Update statistics
-        async function updateStats() {
-            const donors = await dataStorage.loadDonors();
-            const stats = dataStorage.getStats(donors);
-            
-            document.getElementById('totalDonors').textContent = stats.total;
-            document.getElementById('eligibleDonors').textContent = stats.eligible;
-            document.getElementById('universalDonors').textContent = stats.universal;
-            document.getElementById('recentDonors').textContent = stats.recent;
+    // Update statistics
+    async function updateStats() {
+        const donors = await dataStorage.loadDonors();
+        const stats = dataStorage.getStats(donors);
+        
+        document.getElementById('totalDonors').textContent = stats.total;
+        document.getElementById('eligibleDonors').textContent = stats.eligible;
+        document.getElementById('universalDonors').textContent = stats.universal;
+        document.getElementById('recentDonors').textContent = stats.recent;
+    }
+
+    // Modal functions
+    async function openEditModal(donorId) {
+        const donors = await dataStorage.loadDonors();
+        const donor = donors.find(d => d.id === donorId);
+        
+        if (!donor) {
+            showNotification('Donor not found.', 'error');
+            return;
         }
-
-        // Modal functions
-        async function openEditModal(donorId) {
-            const donors = await dataStorage.loadDonors();
-            const donor = donors.find(d => d.id === donorId);
-            
-            if (!donor) {
-                showNotification('Donor not found.', 'error');
-                return;
-            }
-            
-            // Populate form with donor data
-            document.getElementById('editId').value = donor.id;
-            document.getElementById('editName').value = donor.name || '';
-            document.getElementById('editPhone').value = donor.phone || '';
-            document.getElementById('editBloodType').value = donor.bloodType || '';
-            document.getElementById('editDistrict').value = donor.district || '';
-            document.getElementById('editCity').value = donor.city || '';
-            document.getElementById('editLastDonation').value = donor.lastDonation || '';
-            
-            // Set profile picture preview
-            const profilePreview = document.getElementById('profilePreview');
-            if (donor.profilePicture) {
-                profilePreview.innerHTML = `<img src="${donor.profilePicture}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
-            } else {
-                profilePreview.innerHTML = '<i class="fas fa-user"></i>';
-            }
-            
-            document.getElementById('editModal').style.display = 'flex';
+        
+        // Populate form with donor data
+        document.getElementById('editId').value = donor.id;
+        document.getElementById('editName').value = donor.name || '';
+        document.getElementById('editPhone').value = donor.phone || '';
+        document.getElementById('editBloodType').value = donor.bloodType || '';
+        document.getElementById('editDistrict').value = donor.district || '';
+        document.getElementById('editCity').value = donor.city || '';
+        document.getElementById('editLastDonation').value = donor.lastDonation || '';
+        
+        // Set profile picture preview
+        const profilePreview = document.getElementById('profilePreview');
+        if (donor.profilePicture) {
+            profilePreview.innerHTML = `<img src="${donor.profilePicture}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        } else {
+            profilePreview.innerHTML = '<i class="fas fa-user"></i>';
         }
+        
+        document.getElementById('editModal').style.display = 'flex';
+    }
 
-        // Delete modal function
-        function openDeleteModal(donorId) {
-            document.getElementById('deleteModal').style.display = 'flex';
-            
-            // Store the donor ID for deletion
-            document.getElementById('confirmDelete').setAttribute('data-id', donorId);
-        }
+    // Delete modal function
+    function openDeleteModal(donorId) {
+        document.getElementById('deleteModal').style.display = 'flex';
+        
+        // Store the donor ID for deletion
+        document.getElementById('confirmDelete').setAttribute('data-id', donorId);
+    }
 
-        // Profile picture handling
-        function handleProfilePictureUpload(inputElement, previewElement) {
-            inputElement.addEventListener('change', function() {
-                const file = this.files[0];
-                if (file) {
-                    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                        showNotification('Please select an image smaller than 5MB', 'error');
-                        return;
-                    }
-                    
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        previewElement.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
-                    };
-                    reader.readAsDataURL(file);
+    // Profile picture handling
+    function handleProfilePictureUpload(inputElement, previewElement) {
+        inputElement.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                    showNotification('Please select an image smaller than 5MB', 'error');
+                    return;
                 }
-            });
-        }
-
-        // Form submission handler
-        document.getElementById('bloodDonorForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = document.getElementById('submitBtn');
-            const submitText = document.getElementById('submitText');
-            const submitLoading = document.getElementById('submitLoading');
-            
-            submitText.style.display = 'none';
-            submitLoading.style.display = 'inline-block';
-            submitBtn.disabled = true;
-            
-            const name = document.getElementById('name').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-            const bloodType = document.getElementById('bloodType').value;
-            const district = document.getElementById('district').value;
-            const city = document.getElementById('city').value.trim();
-            const lastDonation = document.getElementById('lastDonation').value;
-            
-            // Validation
-            if (!name || !phone || !district || !city || !lastDonation) {
-                showNotification('Please fill in all required fields.', 'error');
-                submitText.style.display = 'inline-block';
-                submitLoading.style.display = 'none';
-                submitBtn.disabled = false;
-                return;
-            }
-            
-            if (!document.getElementById('terms').checked) {
-                showNotification('Please agree to the terms and conditions.', 'error');
-                submitText.style.display = 'inline-block';
-                submitLoading.style.display = 'none';
-                submitBtn.disabled = false;
-                return;
-            }
-            
-            try {
-                const profilePictureInput = document.getElementById('registerProfilePicture');
-                let profilePicture = null;
                 
-                if (profilePictureInput.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = async function(e) {
-                        const newDonor = {
-                            name,
-                            bloodType,
-                            district,
-                            city,
-                            phone,
-                            lastDonation,
-                            profilePicture: e.target.result
-                        };
-                        
-                        const success = await dataStorage.addDonor(newDonor);
-                        
-                        if (success) {
-                            await displayDonors();
-                            await updateStats();
-                            showNotification('🎉 Thank you for registering as a blood donor! Your information has been added to our database.', 'success');
-                            document.getElementById('bloodDonorForm').reset();
-                            document.getElementById('registerProfilePreview').innerHTML = '<i class="fas fa-user"></i>';
-                        } else {
-                            showNotification('There was an error saving your information. Please try again.', 'error');
-                        }
-                        
-                        submitText.style.display = 'inline-block';
-                        submitLoading.style.display = 'none';
-                        submitBtn.disabled = false;
-                    };
-                    reader.readAsDataURL(profilePictureInput.files[0]);
-                } else {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewElement.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // Form submission handler
+    document.getElementById('bloodDonorForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        const submitLoading = document.getElementById('submitLoading');
+        
+        submitText.style.display = 'none';
+        submitLoading.style.display = 'inline-block';
+        submitBtn.disabled = true;
+        
+        const name = document.getElementById('name').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const bloodType = document.getElementById('bloodType').value;
+        const district = document.getElementById('district').value;
+        const city = document.getElementById('city').value.trim();
+        const lastDonation = document.getElementById('lastDonation').value;
+        
+        // Validation
+        if (!name || !phone || !district || !city || !lastDonation) {
+            showNotification('Please fill in all required fields.', 'error');
+            submitText.style.display = 'inline-block';
+            submitLoading.style.display = 'none';
+            submitBtn.disabled = false;
+            return;
+        }
+        
+        if (!document.getElementById('terms').checked) {
+            showNotification('Please agree to the terms and conditions.', 'error');
+            submitText.style.display = 'inline-block';
+            submitLoading.style.display = 'none';
+            submitBtn.disabled = false;
+            return;
+        }
+        
+        try {
+            const profilePictureInput = document.getElementById('registerProfilePicture');
+            let profilePicture = null;
+            
+            if (profilePictureInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
                     const newDonor = {
                         name,
                         bloodType,
                         district,
                         city,
                         phone,
-                        lastDonation
+                        lastDonation,
+                        profilePicture: e.target.result
                     };
                     
                     const success = await dataStorage.addDonor(newDonor);
@@ -1721,7 +1701,7 @@
                         await displayDonors();
                         await updateStats();
                         showNotification('🎉 Thank you for registering as a blood donor! Your information has been added to our database.', 'success');
-                        this.reset();
+                        document.getElementById('bloodDonorForm').reset();
                         document.getElementById('registerProfilePreview').innerHTML = '<i class="fas fa-user"></i>';
                     } else {
                         showNotification('There was an error saving your information. Please try again.', 'error');
@@ -1730,52 +1710,68 @@
                     submitText.style.display = 'inline-block';
                     submitLoading.style.display = 'none';
                     submitBtn.disabled = false;
+                };
+                reader.readAsDataURL(profilePictureInput.files[0]);
+            } else {
+                const newDonor = {
+                    name,
+                    bloodType,
+                    district,
+                    city,
+                    phone,
+                    lastDonation
+                };
+                
+                const success = await dataStorage.addDonor(newDonor);
+                
+                if (success) {
+                    await displayDonors();
+                    await updateStats();
+                    showNotification('🎉 Thank you for registering as a blood donor! Your information has been added to our database.', 'success');
+                    this.reset();
+                    document.getElementById('registerProfilePreview').innerHTML = '<i class="fas fa-user"></i>';
+                } else {
+                    showNotification('There was an error saving your information. Please try again.', 'error');
                 }
-            } catch (error) {
-                console.error('Error in form submission:', error);
-                showNotification('There was an error saving your information. Please try again.', 'error');
+                
                 submitText.style.display = 'inline-block';
                 submitLoading.style.display = 'none';
                 submitBtn.disabled = false;
             }
-        });
+        } catch (error) {
+            console.error('Error in form submission:', error);
+            showNotification('There was an error saving your information. Please try again.', 'error');
+            submitText.style.display = 'inline-block';
+            submitLoading.style.display = 'none';
+            submitBtn.disabled = false;
+        }
+    });
 
-        // Edit form submission handler
-        document.getElementById('editDonorForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const id = document.getElementById('editId').value;
-            const updatedData = {
-                name: document.getElementById('editName').value.trim(),
-                phone: document.getElementById('editPhone').value.trim(),
-                bloodType: document.getElementById('editBloodType').value,
-                district: document.getElementById('editDistrict').value,
-                city: document.getElementById('editCity').value.trim(),
-                lastDonation: document.getElementById('editLastDonation').value
-            };
-            
-            // Validation
-            if (!updatedData.name || !updatedData.phone || !updatedData.district || !updatedData.city || !updatedData.lastDonation) {
-                showNotification('Please fill in all required fields.', 'error');
-                return;
-            }
-            
-            const profilePictureInput = document.getElementById('editProfilePicture');
-            if (profilePictureInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = async function(e) {
-                    updatedData.profilePicture = e.target.result;
-                    const success = await dataStorage.updateDonor(id, updatedData);
-                    if (success) {
-                        showNotification('✅ Your information has been updated successfully!', 'success');
-                        await displayDonors();
-                        document.getElementById('editModal').style.display = 'none';
-                    } else {
-                        showNotification('Failed to update your information.', 'error');
-                    }
-                };
-                reader.readAsDataURL(profilePictureInput.files[0]);
-            } else {
+    // Edit form submission handler
+    document.getElementById('editDonorForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const id = document.getElementById('editId').value;
+        const updatedData = {
+            name: document.getElementById('editName').value.trim(),
+            phone: document.getElementById('editPhone').value.trim(),
+            bloodType: document.getElementById('editBloodType').value,
+            district: document.getElementById('editDistrict').value,
+            city: document.getElementById('editCity').value.trim(),
+            lastDonation: document.getElementById('editLastDonation').value
+        };
+        
+        // Validation
+        if (!updatedData.name || !updatedData.phone || !updatedData.district || !updatedData.city || !updatedData.lastDonation) {
+            showNotification('Please fill in all required fields.', 'error');
+            return;
+        }
+        
+        const profilePictureInput = document.getElementById('editProfilePicture');
+        if (profilePictureInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                updatedData.profilePicture = e.target.result;
                 const success = await dataStorage.updateDonor(id, updatedData);
                 if (success) {
                     showNotification('✅ Your information has been updated successfully!', 'success');
@@ -1784,218 +1780,229 @@
                 } else {
                     showNotification('Failed to update your information.', 'error');
                 }
-            }
-        });
-
-        // Admin login functionality
-        document.getElementById('adminLoginBtn').addEventListener('click', function() {
-            document.getElementById('adminLoginModal').style.display = 'flex';
-        });
-
-        document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const password = document.getElementById('adminPassword').value;
-            
-            if (password === ADMIN_PASSWORD) {
-                isAdminLoggedIn = true;
-                document.getElementById('adminPanel').style.display = 'block';
-                document.getElementById('adminLoginModal').style.display = 'none';
-                showNotification('Admin login successful! You can now delete donor records.', 'success');
-                displayDonors(); // Refresh to show delete buttons
-            } else {
-                showNotification('Incorrect password. Please try again.', 'error');
-            }
-            
-            this.reset();
-        });
-
-        // Admin logout functionality
-        document.getElementById('logoutAdmin').addEventListener('click', function() {
-            isAdminLoggedIn = false;
-            document.getElementById('adminPanel').style.display = 'none';
-            showNotification('Admin logged out successfully.', 'info');
-            displayDonors(); // Refresh to hide delete buttons
-        });
-
-        // Delete donor functionality
-        document.getElementById('confirmDelete').addEventListener('click', async function() {
-            const donorId = this.getAttribute('data-id');
-            
-            const success = await dataStorage.deleteDonor(donorId);
+            };
+            reader.readAsDataURL(profilePictureInput.files[0]);
+        } else {
+            const success = await dataStorage.updateDonor(id, updatedData);
             if (success) {
-                showNotification('Donor deleted successfully.', 'success');
-                document.getElementById('deleteModal').style.display = 'none';
+                showNotification('✅ Your information has been updated successfully!', 'success');
                 await displayDonors();
-                await updateStats();
+                document.getElementById('editModal').style.display = 'none';
             } else {
-                showNotification('Failed to delete donor. Please try again.', 'error');
+                showNotification('Failed to update your information.', 'error');
             }
-        });
-
-        // Cancel delete
-        document.getElementById('cancelDelete').addEventListener('click', function() {
-            document.getElementById('deleteModal').style.display = 'none';
-        });
-
-        // Filter functionality
-        async function applyFilters() {
-            const bloodType = document.getElementById('filterBloodType').value;
-            const district = document.getElementById('filterDistrict').value;
-            const city = document.getElementById('filterCity').value.toLowerCase();
-            const status = document.getElementById('filterStatus').value;
-            
-            const allDonors = await dataStorage.loadDonors();
-            const filteredDonors = allDonors.filter(donor => {
-                const matchesBloodType = !bloodType || donor.bloodType === bloodType;
-                const matchesDistrict = !district || donor.district === district;
-                const matchesCity = !city || donor.city.toLowerCase().includes(city);
-                const matchesStatus = !status || 
-                    (status === 'eligible' && dataStorage.isEligibleToDonate(donor.lastDonation)) ||
-                    (status === 'not-eligible' && !dataStorage.isEligibleToDonate(donor.lastDonation));
-                
-                return matchesBloodType && matchesDistrict && matchesCity && matchesStatus;
-            });
-            
-            displayDonors(filteredDonors);
         }
+    });
 
-        // Event listeners for filters
-        document.getElementById('filterBloodType').addEventListener('change', applyFilters);
-        document.getElementById('filterDistrict').addEventListener('change', applyFilters);
-        document.getElementById('filterCity').addEventListener('input', applyFilters);
-        document.getElementById('filterStatus').addEventListener('change', applyFilters);
+    // Admin login functionality
+    document.getElementById('adminLoginBtn').addEventListener('click', function() {
+        document.getElementById('adminLoginModal').style.display = 'flex';
+    });
+
+    document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
         
-        document.getElementById('clearFilters').addEventListener('click', function() {
-            document.getElementById('filterBloodType').value = '';
-            document.getElementById('filterDistrict').value = '';
-            document.getElementById('filterCity').value = '';
-            document.getElementById('filterStatus').value = '';
-            displayDonors();
-        });
-
-        // Export functionality
-        document.getElementById('exportBtn').addEventListener('click', async function() {
-            const donors = await dataStorage.loadDonors();
-            const dataStr = JSON.stringify(donors, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `blood-donors-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            
-            showNotification('Data exported successfully!', 'info');
-        });
-
-        // Refresh functionality
-        document.getElementById('refreshBtn').addEventListener('click', async function() {
-            showNotification('Refreshing data from cloud...', 'info', 2000);
-            await displayDonors();
-            await updateStats();
-            showNotification('Data refreshed successfully!', 'success');
-        });
-
-        // Add sample data
-        document.getElementById('addSampleBtn').addEventListener('click', async function() {
-            const sampleDonors = [
-                {
-                    name: "Rahim Ahmed",
-                    phone: "+880 1712-345678",
-                    bloodType: "A+",
-                    district: "Dhaka",
-                    city: "Mirpur",
-                    lastDonation: "2024-10-15",
-                    profilePicture: "",
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                },
-                {
-                    name: "Fatima Begum",
-                    phone: "+880 1812-345679",
-                    bloodType: "O+",
-                    district: "Chittagong",
-                    city: "Agrabad",
-                    lastDonation: "2024-09-20",
-                    profilePicture: "",
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                },
-                {
-                    name: "Karim Uddin",
-                    phone: "+880 1912-345680",
-                    bloodType: "B+",
-                    district: "Sylhet",
-                    city: "Zindabazar",
-                    lastDonation: "2024-11-05",
-                    profilePicture: "",
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                }
-            ];
-            
-            // Add sample donors one by one
-            let addedCount = 0;
-            for (const sampleDonor of sampleDonors) {
-                sampleDonor.id = dataStorage.generateId();
-                const success = await dataStorage.addDonor(sampleDonor);
-                if (success) {
-                    addedCount++;
-                }
-            }
-            
-            await displayDonors();
-            await updateStats();
-            showNotification(`${addedCount} sample donors added successfully!`, 'success');
-        });
-
-        // Cancel edit
-        document.getElementById('cancelEdit').addEventListener('click', function() {
-            document.getElementById('editModal').style.display = 'none';
-        });
-
-        // Cancel admin login
-        document.getElementById('cancelAdminLogin').addEventListener('click', function() {
+        const password = document.getElementById('adminPassword').value;
+        
+        if (password === ADMIN_PASSWORD) {
+            isAdminLoggedIn = true;
+            document.getElementById('adminPanel').style.display = 'block';
             document.getElementById('adminLoginModal').style.display = 'none';
-        });
+            showNotification('Admin login successful! You can now delete donor records.', 'success');
+            displayDonors(); // Refresh to show delete buttons
+        } else {
+            showNotification('Incorrect password. Please try again.', 'error');
+        }
+        
+        this.reset();
+    });
 
-        // Close modal when clicking outside
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal')) {
-                e.target.style.display = 'none';
-            }
-        });
+    // Admin logout functionality
+    document.getElementById('logoutAdmin').addEventListener('click', function() {
+        isAdminLoggedIn = false;
+        document.getElementById('adminPanel').style.display = 'none';
+        showNotification('Admin logged out successfully.', 'info');
+        displayDonors(); // Refresh to hide delete buttons
+    });
 
-        // Initialize the page
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('🚀 Initializing LifeShare Blood Donor Management System...');
-            
-            // Set up profile picture upload handlers
-            handleProfilePictureUpload(
-                document.getElementById('registerProfilePicture'),
-                document.getElementById('registerProfilePreview')
-            );
-            
-            handleProfilePictureUpload(
-                document.getElementById('editProfilePicture'),
-                document.getElementById('profilePreview')
-            );
-            
-            // Load initial data
+    // Delete donor functionality
+    document.getElementById('confirmDelete').addEventListener('click', async function() {
+        const donorId = this.getAttribute('data-id');
+        
+        const success = await dataStorage.deleteDonor(donorId);
+        if (success) {
+            showNotification('Donor deleted successfully.', 'success');
+            document.getElementById('deleteModal').style.display = 'none';
             await displayDonors();
             await updateStats();
+        } else {
+            showNotification('Failed to delete donor. Please try again.', 'error');
+        }
+    });
+
+    // Cancel delete
+    document.getElementById('cancelDelete').addEventListener('click', function() {
+        document.getElementById('deleteModal').style.display = 'none';
+    });
+
+    // Filter functionality
+    async function applyFilters() {
+        const bloodType = document.getElementById('filterBloodType').value;
+        const district = document.getElementById('filterDistrict').value;
+        const city = document.getElementById('filterCity').value.toLowerCase();
+        const status = document.getElementById('filterStatus').value;
+        
+        const allDonors = await dataStorage.loadDonors();
+        const filteredDonors = allDonors.filter(donor => {
+            const matchesBloodType = !bloodType || donor.bloodType === bloodType;
+            const matchesDistrict = !district || donor.district === district;
+            const matchesCity = !city || donor.city.toLowerCase().includes(city);
+            const matchesStatus = !status || 
+                (status === 'eligible' && dataStorage.isEligibleToDonate(donor.lastDonation)) ||
+                (status === 'not-eligible' && !dataStorage.isEligibleToDonate(donor.lastDonation));
             
-            console.log('✅ LifeShare initialized successfully');
-            
-            // Show welcome notification
-            setTimeout(() => {
-                showNotification('Welcome to LifeShare! Data is synced across all devices.', 'info', 5000);
-            }, 1000);
+            return matchesBloodType && matchesDistrict && matchesCity && matchesStatus;
         });
-    </script>
+        
+        displayDonors(filteredDonors);
+    }
+
+    // Event listeners for filters
+    document.getElementById('filterBloodType').addEventListener('change', applyFilters);
+    document.getElementById('filterDistrict').addEventListener('change', applyFilters);
+    document.getElementById('filterCity').addEventListener('input', applyFilters);
+    document.getElementById('filterStatus').addEventListener('change', applyFilters);
+    
+    document.getElementById('clearFilters').addEventListener('click', function() {
+        document.getElementById('filterBloodType').value = '';
+        document.getElementById('filterDistrict').value = '';
+        document.getElementById('filterCity').value = '';
+        document.getElementById('filterStatus').value = '';
+        displayDonors();
+    });
+
+    // Export functionality
+    document.getElementById('exportBtn').addEventListener('click', async function() {
+        const donors = await dataStorage.loadDonors();
+        const dataStr = JSON.stringify(donors, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `blood-donors-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        showNotification('Data exported successfully!', 'info');
+    });
+
+    // Refresh functionality
+    document.getElementById('refreshBtn').addEventListener('click', async function() {
+        showNotification('Refreshing data from cloud...', 'info', 2000);
+        await displayDonors();
+        await updateStats();
+        showNotification('Data refreshed successfully!', 'success');
+    });
+
+    // Add sample data
+    document.getElementById('addSampleBtn').addEventListener('click', async function() {
+        const sampleDonors = [
+            {
+                name: "Rahim Ahmed",
+                phone: "+880 1712-345678",
+                bloodType: "A+",
+                district: "Dhaka",
+                city: "Mirpur",
+                lastDonation: "2024-10-15",
+                profilePicture: "",
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                name: "Fatima Begum",
+                phone: "+880 1812-345679",
+                bloodType: "O+",
+                district: "Chittagong",
+                city: "Agrabad",
+                lastDonation: "2024-09-20",
+                profilePicture: "",
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                name: "Karim Uddin",
+                phone: "+880 1912-345680",
+                bloodType: "B+",
+                district: "Sylhet",
+                city: "Zindabazar",
+                lastDonation: "2024-11-05",
+                profilePicture: "",
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }
+        ];
+        
+        // Add sample donors one by one
+        let addedCount = 0;
+        for (const sampleDonor of sampleDonors) {
+            sampleDonor.id = dataStorage.generateId();
+            const success = await dataStorage.addDonor(sampleDonor);
+            if (success) {
+                addedCount++;
+            }
+        }
+        
+        await displayDonors();
+        await updateStats();
+        showNotification(`${addedCount} sample donors added successfully!`, 'success');
+    });
+
+    // Cancel edit
+    document.getElementById('cancelEdit').addEventListener('click', function() {
+        document.getElementById('editModal').style.display = 'none';
+    });
+
+    // Cancel admin login
+    document.getElementById('cancelAdminLogin').addEventListener('click', function() {
+        document.getElementById('adminLoginModal').style.display = 'none';
+    });
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            e.target.style.display = 'none';
+        }
+    });
+
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('🚀 Initializing LifeShare Blood Donor Management System...');
+        
+        // Set up profile picture upload handlers
+        handleProfilePictureUpload(
+            document.getElementById('registerProfilePicture'),
+            document.getElementById('registerProfilePreview')
+        );
+        
+        handleProfilePictureUpload(
+            document.getElementById('editProfilePicture'),
+            document.getElementById('profilePreview')
+        );
+        
+        // Load initial data
+        await displayDonors();
+        await updateStats();
+        
+        console.log('✅ LifeShare initialized successfully');
+        
+        // Show welcome notification
+        setTimeout(() => {
+            showNotification('Welcome to LifeShare! Data is synced across all devices.', 'info', 5000);
+        }, 1000);
+    });
+</script>
 </body>
 </html>
