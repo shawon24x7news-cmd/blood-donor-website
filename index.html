@@ -1223,271 +1223,252 @@
     </div>
 
     <script>
-        // =============================================
-        // CLOUD STORAGE WITH JSONBIN.IO (FIXED FOR CORS)
-        // =============================================
-        
-        class CloudStorage {
-            constructor() {
-                // Your JSONBin.io credentials
-                this.binId = '692290a943b1c97be9bf2fbf';
-                this.apiKey = '$2a$10$QrJWiUao1GrkoPvT5i9bcu0GUsVg.FniKY129zoFXLJrm/q7Jashq';
-                this.baseUrl = 'https://api.jsonbin.io/v3/b';
-                this.backupUrl = `https://api.jsonbin.io/v3/b/${this.binId}/latest`;
-            }
-
-            async loadDonors() {
-                try {
-                    console.log('🔄 Loading donors from JSONBin.io...');
-                    
-                    // Try direct fetch first
-                    const response = await fetch(this.backupUrl, {
-                        method: 'GET',
-                        headers: {
-                            'X-Master-Key': this.apiKey,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    
-                    const data = await response.json();
-                    const donors = data.record?.donors || [];
-                    console.log(`✅ Loaded ${donors.length} donors from JSONBin.io`);
-                    
-                    // Always sync with localStorage as backup
-                    this.saveToLocalStorage(donors);
-                    
-                    return donors;
-                } catch (error) {
-                    console.error('❌ Error loading from JSONBin.io:', error);
-                    console.log('🔄 Falling back to localStorage...');
-                    return this.loadFromLocalStorage();
-                }
-            }
-
-            async saveDonors(donors) {
-                try {
-                    console.log('💾 Saving donors to JSONBin.io...');
-                    
-                    const response = await fetch(`https://api.jsonbin.io/v3/b/${this.binId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Master-Key': this.apiKey,
-                            'X-Bin-Versioning': 'false'
-                        },
-                        body: JSON.stringify({ donors })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    
-                    const result = await response.json();
-                    console.log('✅ Donors saved to JSONBin.io:', result);
-                    
-                    // Always update localStorage as backup
-                    this.saveToLocalStorage(donors);
-                    
-                    return true;
-                } catch (error) {
-                    console.error('❌ Error saving to JSONBin.io:', error);
-                    console.log('🔄 Falling back to localStorage...');
-                    return this.saveToLocalStorage(donors);
-                }
-            }
-
-            async addDonor(donor) {
-                const donors = await this.loadDonors();
-                
-                // Generate unique ID
-                donor.id = this.generateId();
-                donor.createdAt = new Date().toISOString();
-                donor.updatedAt = new Date().toISOString();
-                
-                donors.push(donor);
-                const success = await this.saveDonors(donors);
-                
-                if (success) {
-                    console.log('✅ Donor added successfully:', donor);
-                    return true;
-                } else {
-                    console.error('❌ Failed to add donor');
-                    return false;
-                }
-            }
-
-            async updateDonor(id, updatedData) {
-                const donors = await this.loadDonors();
-                const index = donors.findIndex(d => d.id === id);
-                
-                if (index !== -1) {
-                    donors[index] = {
-                        ...donors[index],
-                        ...updatedData,
-                        updatedAt: new Date().toISOString()
-                    };
-                    
-                    const success = await this.saveDonors(donors);
-                    if (success) {
-                        console.log('✅ Donor updated successfully:', donors[index]);
-                        return true;
-                    }
-                }
-                
-                console.error('❌ Failed to update donor');
-                return false;
-            }
-
-            async deleteDonor(id) {
-                const donors = await this.loadDonors();
-                const filteredDonors = donors.filter(d => d.id !== id);
-                
-                if (filteredDonors.length !== donors.length) {
-                    const success = await this.saveDonors(filteredDonors);
-                    if (success) {
-                        console.log('✅ Donor deleted successfully');
-                        return true;
-                    }
-                }
-                
-                console.error('❌ Failed to delete donor');
-                return false;
-            }
-
-            // Local storage fallback methods
-            loadFromLocalStorage() {
-                try {
-                    const stored = localStorage.getItem('lifeshare-donors');
-                    const donors = stored ? JSON.parse(stored) : [];
-                    console.log(`📱 Loaded ${donors.length} donors from localStorage`);
-                    return donors;
-                } catch (error) {
-                    console.error('Error loading from localStorage:', error);
-                    return [];
-                }
-            }
-
-            saveToLocalStorage(donors) {
-                try {
-                    localStorage.setItem('lifeshare-donors', JSON.stringify(donors));
-                    console.log('💾 Saved to localStorage');
-                    return true;
-                } catch (error) {
-                    console.error('Error saving to localStorage:', error);
-                    return false;
-                }
-            }
-
-            generateId() {
-                return 'donor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            }
-
-            // Eligibility methods
-            isEligibleToDonate(lastDonationDate) {
-                if (!lastDonationDate) return true;
-                const lastDonation = new Date(lastDonationDate);
-                const threeMonthsAgo = new Date();
-                threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-                return lastDonation <= threeMonthsAgo;
-            }
-
-            getEligibilityStatus(lastDonationDate) {
-                if (!lastDonationDate) {
-                    return { 
-                        eligible: true, 
-                        message: "Eligible to donate now",
-                        icon: "fa-check-circle"
-                    };
-                }
-                
-                const lastDonation = new Date(lastDonationDate);
-                const threeMonthsAgo = new Date();
-                threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-                
-                if (lastDonation <= threeMonthsAgo) {
-                    return { 
-                        eligible: true, 
-                        message: "Eligible to donate now (3 months completed)",
-                        icon: "fa-check-circle"
-                    };
-                } else {
-                    const nextDonationDate = new Date(lastDonation);
-                    nextDonationDate.setMonth(lastDonation.getMonth() + 3);
-                    const daysLeft = Math.ceil((nextDonationDate - new Date()) / (1000 * 60 * 60 * 24));
-                    return { 
-                        eligible: false, 
-                        message: `Not eligible yet (${daysLeft} days remaining)`,
-                        icon: "fa-times-circle"
-                    };
-                }
-            }
-
-            getStats(donors) {
-                const total = donors.length;
-                const eligible = donors.filter(d => this.isEligibleToDonate(d.lastDonation)).length;
-                const universal = donors.filter(d => d.bloodType === "O-").length;
-                const recent = donors.filter(d => {
-                    const weekAgo = new Date();
-                    weekAgo.setDate(weekAgo.getDate() - 7);
-                    return new Date(d.createdAt) >= weekAgo;
-                }).length;
-
-                return { total, eligible, universal, recent };
-            }
+         // =============================================
+    // CLOUD STORAGE WITH JSONBIN.IO (FIXED VERSION)
+    // =============================================
+    
+    class CloudStorage {
+        constructor() {
+            // Fixed JSONBin.io configuration
+            this.binId = '692290a943b1c97be9bf2fbf';
+            this.apiKey = '$2a$10$QrJWiUao1GrkoPvT5i9bcu0GUsVg.FniKY129zoFXLJrm/q7Jashq';
+            this.baseUrl = 'https://api.jsonbin.io/v3/b';
         }
 
-        // =============================================
-        // APPLICATION CODE
-        // =============================================
-
-        // Initialize storage
-        const dataStorage = new CloudStorage();
-
-        // Admin password
-        const ADMIN_PASSWORD = "admin123";
-        let isAdminLoggedIn = false;
-
-        // Track if we're using cloud storage
-        let isUsingCloudStorage = true;
-
-        // Notification system
-        function showNotification(message, type = 'success', duration = 4000) {
-            const notification = document.getElementById('notification');
-            notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle'}"></i>
-                    <span>${message}</span>
-                </div>
-            `;
-            notification.className = `notification ${type} show`;
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, duration);
-        }
-
-        // Tab switching functionality
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                this.classList.add('active');
+        async loadDonors() {
+            try {
+                console.log('🔄 Loading donors from JSONBin.io...');
                 
-                const tabId = this.getAttribute('data-tab');
-                document.querySelectorAll('.tab-content').forEach(content => {
-                    content.classList.remove('active');
+                const response = await fetch(`${this.baseUrl}/${this.binId}/latest`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Master-Key': this.apiKey,
+                        'X-Bin-Meta': 'false'
+                    }
                 });
-                document.getElementById(`${tabId}-tab`).classList.add('active');
                 
-                if (tabId === 'donors') {
-                    displayDonors();
-                    updateStats();
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
+                
+                const data = await response.json();
+                const donors = data.donors || [];
+                console.log(`✅ Loaded ${donors.length} donors from JSONBin.io`);
+                
+                // Sync with localStorage as backup
+                localStorage.setItem('lifeshare-donors', JSON.stringify(donors));
+                
+                return donors;
+            } catch (error) {
+                console.error('❌ Error loading from JSONBin.io:', error);
+                console.log('🔄 Falling back to localStorage...');
+                return this.loadFromLocalStorage();
+            }
+        }
+
+        async saveDonors(donors) {
+            try {
+                console.log('💾 Saving donors to JSONBin.io...');
+                
+                const response = await fetch(`${this.baseUrl}/${this.binId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': this.apiKey
+                    },
+                    body: JSON.stringify({ donors })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                console.log('✅ Donors saved to JSONBin.io');
+                
+                // Update localStorage as backup
+                localStorage.setItem('lifeshare-donors', JSON.stringify(donors));
+                
+                return true;
+            } catch (error) {
+                console.error('❌ Error saving to JSONBin.io:', error);
+                console.log('🔄 Falling back to localStorage...');
+                return this.saveToLocalStorage(donors);
+            }
+        }
+
+        async addDonor(donor) {
+            const donors = await this.loadDonors();
+            
+            // Generate unique ID
+            donor.id = this.generateId();
+            donor.createdAt = new Date().toISOString();
+            donor.updatedAt = new Date().toISOString();
+            
+            donors.push(donor);
+            const success = await this.saveDonors(donors);
+            
+            if (success) {
+                console.log('✅ Donor added successfully:', donor);
+                return true;
+            } else {
+                console.error('❌ Failed to add donor');
+                return false;
+            }
+        }
+
+        async updateDonor(id, updatedData) {
+            const donors = await this.loadDonors();
+            const index = donors.findIndex(d => d.id === id);
+            
+            if (index !== -1) {
+                donors[index] = {
+                    ...donors[index],
+                    ...updatedData,
+                    updatedAt: new Date().toISOString()
+                };
+                
+                const success = await this.saveDonors(donors);
+                return success;
+            }
+            
+            return false;
+        }
+
+        async deleteDonor(id) {
+            const donors = await this.loadDonors();
+            const filteredDonors = donors.filter(d => d.id !== id);
+            
+            if (filteredDonors.length !== donors.length) {
+                const success = await this.saveDonors(filteredDonors);
+                return success;
+            }
+            
+            return false;
+        }
+
+        // Local storage fallback methods
+        loadFromLocalStorage() {
+            try {
+                const stored = localStorage.getItem('lifeshare-donors');
+                return stored ? JSON.parse(stored) : [];
+            } catch (error) {
+                console.error('Error loading from localStorage:', error);
+                return [];
+            }
+        }
+
+        saveToLocalStorage(donors) {
+            try {
+                localStorage.setItem('lifeshare-donors', JSON.stringify(donors));
+                return true;
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+                return false;
+            }
+        }
+
+        generateId() {
+            return 'donor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Eligibility methods
+        isEligibleToDonate(lastDonationDate) {
+            if (!lastDonationDate) return true;
+            const lastDonation = new Date(lastDonationDate);
+            const threeMonthsAgo = new Date();
+            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+            return lastDonation <= threeMonthsAgo;
+        }
+
+        getEligibilityStatus(lastDonationDate) {
+            if (!lastDonationDate) {
+                return { 
+                    eligible: true, 
+                    message: "Eligible to donate now",
+                    icon: "fa-check-circle"
+                };
+            }
+            
+            const lastDonation = new Date(lastDonationDate);
+            const threeMonthsAgo = new Date();
+            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+            
+            if (lastDonation <= threeMonthsAgo) {
+                return { 
+                    eligible: true, 
+                    message: "Eligible to donate now",
+                    icon: "fa-check-circle"
+                };
+            } else {
+                const nextDonationDate = new Date(lastDonation);
+                nextDonationDate.setMonth(lastDonation.getMonth() + 3);
+                const daysLeft = Math.ceil((nextDonationDate - new Date()) / (1000 * 60 * 60 * 24));
+                return { 
+                    eligible: false, 
+                    message: `Not eligible yet (${daysLeft} days remaining)`,
+                    icon: "fa-times-circle"
+                };
+            }
+        }
+
+        getStats(donors) {
+            const total = donors.length;
+            const eligible = donors.filter(d => this.isEligibleToDonate(d.lastDonation)).length;
+            const universal = donors.filter(d => d.bloodType === "O-").length;
+            const recent = donors.filter(d => {
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return new Date(d.createdAt) >= weekAgo;
+            }).length;
+
+            return { total, eligible, universal, recent };
+        }
+    }
+
+    // =============================================
+    // APPLICATION CODE (REST REMAINS THE SAME)
+    // =============================================
+
+    // Initialize storage
+    const dataStorage = new CloudStorage();
+
+    // Admin password
+    const ADMIN_PASSWORD = "admin123";
+    let isAdminLoggedIn = false;
+
+    // Notification system
+    function showNotification(message, type = 'success', duration = 4000) {
+        const notification = document.getElementById('notification');
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        notification.className = `notification ${type} show`;
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+        }, duration);
+    }
+// Tab switching functionality
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            const tabId = this.getAttribute('data-tab');
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
             });
+            document.getElementById(`${tabId}-tab`).classList.add('active');
+            
+            if (tabId === 'donors') {
+                displayDonors();
+                updateStats();
+            }
         });
+    });
 
         // Function to display donors
         async function displayDonors(donors = null) {
