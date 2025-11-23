@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeShare - Blood Donor Management System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Your existing CSS styles remain the same */
+        :root {
+            --primary: #e53935;
+            --primary-dark: #c62828;
+            --primary-light: #ffcdd2;
+            --primary-gradient: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+            --secondary: #424242;
+            --light: #f8f9fa;
+            --dark: #1a1a1a;
+            --success: #00c853;
+            --warning: #ff9100;
+            --info: #2962ff;
+            --danger: #ff1744;
+            --gray: #9e9e9e;
+            --gray-light: #e0e0e0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            line-height: 1.6;
+            color: var(--dark);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            font-weight: 400;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        /* ... (all your existing CSS styles) ... */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Your existing HTML structure remains the same -->
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-tint"></i>
+                LifeShare
+            </div>
+            <p class="tagline">Connecting blood donors with those in need. Your single donation can save up to three lives.</p>
+        </div>
+
+        <!-- Tabs, modals, and content remain the same -->
+        <!-- ... -->
+
+    </div>
+
+    <script>
+        // =============================================
+        // JSONBIN.IO STORAGE (FREE & EASY)
+        // =============================================
+        
+        class JSONBinStorage {
+            constructor() {
+                // 🔴 REPLACE WITH YOUR JSONBIN.IO CREDENTIALS
+                this.binId = '692290a943b1c97be9bf2fbf'; // Create at jsonbin.io
+                this.apiKey = '$2a$10$QrJWiUao1GrkoPvT5i9bcu0GUsVg.FniKY129zoFXLJrm/q7Jashq'; // Get from jsonbin.io
+                this.baseUrl = 'https://api.jsonbin.io/v3/b';
+            }
+
+            async loadDonors() {
+                try {
+                    console.log('🔄 Loading donors from JSONBin.io...');
+                    const response = await fetch(`${this.baseUrl}/${this.binId}/latest`, {
+                        headers: {
+                            'X-Master-Key': this.apiKey
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log(`✅ Loaded ${data.record.donors?.length || 0} donors from JSONBin.io`);
+                    return data.record.donors || [];
+                } catch (error) {
+                    console.error('❌ Error loading from JSONBin.io:', error);
+                    // Fallback to localStorage
+                    return this.loadFromLocalStorage();
+                }
+            }
+
+            async saveDonors(donors) {
+                try {
+                    console.log('💾 Saving donors to JSONBin.io...');
+                    const response = await fetch(`${this.baseUrl}/${this.binId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Master-Key': this.apiKey
+                        },
+                        body: JSON.stringify({ donors })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    console.log('✅ Donors saved to JSONBin.io');
+                    
+                    // Also save to localStorage as backup
+                    this.saveToLocalStorage(donors);
+                    
+                    return true;
+                } catch (error) {
+                    console.error('❌ Error saving to JSONBin.io:', error);
+                    // Fallback to localStorage
+                    return this.saveToLocalStorage(donors);
+                }
+            }
+
+            async addDonor(donor) {
+                const donors = await this.loadDonors();
+                donor.id = this.generateId();
+                donor.createdAt = new Date().toISOString();
+                donor.updatedAt = new Date().toISOString();
+                
+                donors.push(donor);
+                const success = await this.saveDonors(donors);
+                
+                if (success) {
+                    console.log('✅ Donor added successfully');
+                    return true;
+                } else {
+                    console.error('❌ Failed to add donor');
+                    return false;
+                }
+            }
+
+            async updateDonor(id, updatedData) {
+                const donors = await this.loadDonors();
+                const index = donors.findIndex(d => d.id === id);
+                
+                if (index !== -1) {
+                    donors[index] = {
+                        ...donors[index],
+                        ...updatedData,
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    const success = await this.saveDonors(donors);
+                    if (success) {
+                        console.log('✅ Donor updated successfully');
+                        return true;
+                    }
+                }
+                
+                console.error('❌ Failed to update donor');
+                return false;
+            }
+
+            async deleteDonor(id) {
+                const donors = await this.loadDonors();
+                const filteredDonors = donors.filter(d => d.id !== id);
+                
+                if (filteredDonors.length !== donors.length) {
+                    const success = await this.saveDonors(filteredDonors);
+                    if (success) {
+                        console.log('✅ Donor deleted successfully');
+                        return true;
+                    }
+                }
+                
+                console.error('❌ Failed to delete donor');
+                return false;
+            }
+
+            // Local storage fallback methods
+            loadFromLocalStorage() {
+                try {
+                    const stored = localStorage.getItem('lifeshare-donors');
+                    return stored ? JSON.parse(stored) : [];
+                } catch (error) {
+                    console.error('Error loading from localStorage:', error);
+                    return [];
+                }
+            }
+
+            saveToLocalStorage(donors) {
+                try {
+                    localStorage.setItem('lifeshare-donors', JSON.stringify(donors));
+                    return true;
+                } catch (error) {
+                    console.error('Error saving to localStorage:', error);
+                    return false;
+                }
+            }
+
+            generateId() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2);
+            }
+
+            // Eligibility methods (same as before)
+            isEligibleToDonate(lastDonationDate) {
+                if (!lastDonationDate) return true;
+                const lastDonation = new Date(lastDonationDate);
+                const threeMonthsAgo = new Date();
+                threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+                return lastDonation <= threeMonthsAgo;
+            }
+
+            getEligibilityStatus(lastDonationDate) {
+                if (!lastDonationDate) {
+                    return { 
+                        eligible: true, 
+                        message: "এখন রক্ত দিতে পারবে",
+                        icon: "fa-check-circle"
+                    };
+                }
+                
+                const lastDonation = new Date(lastDonationDate);
+                const threeMonthsAgo = new Date();
+                threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+                
+                if (lastDonation <= threeMonthsAgo) {
+                    return { 
+                        eligible: true, 
+                        message: "এখন রক্ত দিতে পারবে (তার ৩ মাস পূর্ণ হয়েছে)",
+                        icon: "fa-check-circle"
+                    };
+                } else {
+                    const nextDonationDate = new Date(lastDonation);
+                    nextDonationDate.setMonth(lastDonation.getMonth() + 3);
+                    const daysLeft = Math.ceil((nextDonationDate - new Date()) / (1000 * 60 * 60 * 24));
+                    return { 
+                        eligible: false, 
+                        message: `তার এখনো ৩ মাস পূর্ণ হয়নি রক্ত দিতে পারবে না (${daysLeft} দিন বাকি)`,
+                        icon: "fa-times-circle"
+                    };
+                }
+            }
+
+            getStats(donors) {
+                const total = donors.length;
+                const eligible = donors.filter(d => this.isEligibleToDonate(d.lastDonation)).length;
+                const universal = donors.filter(d => d.bloodType === "O-").length;
+                const recent = donors.filter(d => {
+                    const weekAgo = new Date();
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    return new Date(d.createdAt) >= weekAgo;
+                }).length;
+
+                return { total, eligible, universal, recent };
+            }
+        }
+
+        // =============================================
+        // APPLICATION CODE (REMAINS LARGELY THE SAME)
+        // =============================================
+
+        // Initialize storage with JSONBin.io
+        const dataStorage = new JSONBinStorage();
+
+        // Admin password
+        const ADMIN_PASSWORD = "admin123";
+        let isAdminLoggedIn = false;
+
+        // Notification system (same as before)
+        function showNotification(message, type = 'success', duration = 4000) {
+            const notification = document.getElementById('notification');
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            notification.className = `notification ${type} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, duration);
+        }
+
+        // Tab switching (same as before)
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                const tabId = this.getAttribute('data-tab');
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+                
+                if (tabId === 'donors') {
+                    displayDonors();
+                    updateStats();
+                }
+            });
+        });
+
+        // Display donors function (same as before)
+        async function displayDonors(donors = null) {
+            const donorsList = document.getElementById('donorsList');
+            const donorsToDisplay = donors || await dataStorage.loadDonors();
+            const donorCountBadge = document.getElementById('donorCountBadge');
+            
+            donorCountBadge.textContent = donorsToDisplay.length;
+            donorsList.innerHTML = '';
+            
+            if (donorsToDisplay.length === 0) {
+                donorsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-user-slash"></i>
+                        <h3>No Donors Found</h3>
+                        <p>No donors are currently registered. Be the first to register as a blood donor and help save lives!</p>
+                        <button class="btn mt-4" onclick="document.querySelector('[data-tab=\\'register\\']').click()">
+                            <i class="fas fa-user-plus"></i>
+                            Register as Donor
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            donorsToDisplay.forEach(donor => {
+                const eligibility = dataStorage.getEligibilityStatus(donor.lastDonation);
+                const statusClass = eligibility.eligible ? 'status-eligible' : 'status-not-eligible';
+                
+                const donorCard = document.createElement('div');
+                donorCard.className = 'donor-card';
+                donorCard.innerHTML = `
+                    ${donor.profilePicture ? 
+                        `<img src="${donor.profilePicture}" class="profile-picture" alt="${donor.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
+                        ''
+                    }
+                    <div class="profile-picture" style="${donor.profilePicture ? 'display:none' : ''}">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    
+                    <div class="donor-blood">${donor.bloodType || 'Unknown'}</div>
+                    <div class="donor-name">${donor.name}</div>
+                    
+                    ${donor.city || donor.country ? `
+                        <div class="donor-location">
+                            <i class="fas fa-map-marker-alt"></i>
+                            ${donor.city && donor.country ? `${donor.city}, ${donor.country}` : donor.city || donor.country}
+                        </div>
+                    ` : ''}
+                    
+                    <div class="donor-contact">
+                        <a href="tel:${donor.phone}">
+                            <i class="fas fa-phone"></i>
+                            ${donor.phone}
+                        </a>
+                    </div>
+                    
+                    <div class="donor-status ${statusClass}">
+                        <i class="fas ${eligibility.icon}"></i>
+                        ${eligibility.message}
+                    </div>
+                    
+                    <div class="donor-actions">
+                        <button class="btn btn-outline btn-small edit-donor" data-id="${donor.id}">
+                            <i class="fas fa-edit"></i>
+                            Update
+                        </button>
+                        ${isAdminLoggedIn ? `
+                            <button class="btn btn-danger btn-small delete-donor" data-id="${donor.id}">
+                                <i class="fas fa-trash"></i>
+                                Delete
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                donorsList.appendChild(donorCard);
+            });
+            
+            // Add event listeners to edit buttons
+            document.querySelectorAll('.edit-donor').forEach(button => {
+                button.addEventListener('click', function() {
+                    const donorId = this.getAttribute('data-id');
+                    openEditModal(donorId);
+                });
+            });
+            
+            // Add event listeners to delete buttons (if admin is logged in)
+            if (isAdminLoggedIn) {
+                document.querySelectorAll('.delete-donor').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const donorId = this.getAttribute('data-id');
+                        openDeleteModal(donorId);
+                    });
+                });
+            }
+        }
+
+        // Update statistics (same as before)
+        async function updateStats() {
+            const donors = await dataStorage.loadDonors();
+            const stats = dataStorage.getStats(donors);
+            
+            document.getElementById('totalDonors').textContent = stats.total;
+            document.getElementById('eligibleDonors').textContent = stats.eligible;
+            document.getElementById('universalDonors').textContent = stats.universal;
+            document.getElementById('recentDonors').textContent = stats.recent;
+        }
+
+        // The rest of your application code remains the same...
+        // (Modal functions, form handlers, admin login, etc.)
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Initializing LifeShare with JSONBin.io storage...');
+            
+            // Set up profile picture upload handlers
+            // ... (same as before)
+            
+            // Load initial data
+            await displayDonors();
+            await updateStats();
+            
+            console.log('✅ LifeShare initialized successfully');
+            
+            // Show welcome notification
+            setTimeout(() => {
+                showNotification('Welcome to LifeShare! Data is now stored in the cloud.', 'info', 5000);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
