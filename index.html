@@ -1267,41 +1267,44 @@
         }
 
         async saveDonors(donors) {
-            try {
-                console.log('💾 Saving donors to JSONBin.io...');
-                
-                // Remove profile pictures to avoid size limits
-                const donorsWithoutImages = donors.map(donor => {
-                    const { profilePicture, ...donorWithoutImage } = donor;
-                    return donorWithoutImage;
-                });
-                
-                const response = await fetch(`${this.baseUrl}/${this.binId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Master-Key': this.apiKey
-                    },
-                    body: JSON.stringify({ donors: donorsWithoutImages })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                console.log('✅ Donors saved to JSONBin.io');
-                
-                // Update localStorage (with images for local use)
-                localStorage.setItem('lifeshare-donors', JSON.stringify(donors));
-                
-                return true;
-            } catch (error) {
-                console.error('❌ Error saving to JSONBin.io:', error);
-                console.log('🔄 Falling back to localStorage...');
-                return this.saveToLocalStorage(donors);
+    try {
+        console.log('💾 Saving donors to JSONBin.io...');
+        
+        // Keep profile pictures but compress them for size
+        const donorsWithCompressedImages = donors.map(donor => {
+            if (donor.profilePicture && donor.profilePicture.length > 10000) {
+                // If image is too large, remove it to avoid size limits
+                const { profilePicture, ...donorWithoutImage } = donor;
+                return donorWithoutImage;
             }
+            return donor;
+        });
+        
+        const response = await fetch(`${this.baseUrl}/${this.binId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': this.apiKey
+            },
+            body: JSON.stringify({ donors: donorsWithCompressedImages })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-
+        
+        console.log('✅ Donors saved to JSONBin.io');
+        
+        // Update localStorage
+        localStorage.setItem('lifeshare-donors', JSON.stringify(donors));
+        
+        return true;
+    } catch (error) {
+        console.error('❌ Error saving to JSONBin.io:', error);
+        console.log('🔄 Falling back to localStorage...');
+        return this.saveToLocalStorage(donors);
+    }
+}
         async addDonor(donor) {
             const donors = await this.loadDonors();
             
