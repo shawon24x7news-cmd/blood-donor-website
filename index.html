@@ -838,6 +838,128 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--primary-dark);
         }
+
+        /* Footer Styles */
+.footer {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 30px 40px 20px;
+    margin-top: 40px;
+    position: relative;
+    overflow: hidden;
+}
+
+.footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" opacity="0.05"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="white"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    position: relative;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.footer-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.footer-logo i {
+    font-size: 1.8rem;
+    color: #ffcdd2;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.footer-text {
+    text-align: center;
+    flex: 1;
+}
+
+.footer-organization {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.footer-subtitle {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    font-weight: 300;
+}
+
+.footer-social {
+    display: flex;
+    gap: 15px;
+}
+
+.social-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: white;
+    text-decoration: none;
+    transition: var(--transition);
+    backdrop-filter: blur(10px);
+}
+
+.social-link:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* Responsive Footer */
+@media (max-width: 768px) {
+    .footer {
+        padding: 25px 20px 15px;
+    }
+    
+    .footer-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .footer-logo {
+        justify-content: center;
+    }
+    
+    .footer-organization {
+        font-size: 1.1rem;
+    }
+    
+    .footer-social {
+        justify-content: center;
+    }
+}
     </style>
 </head>
 <body>
@@ -1238,39 +1360,68 @@
                 <!-- Donor cards will be dynamically added here -->
             </div>
         </div>
+        <!-- Add this right before the closing </div> of .container -->
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-logo">
+            <i class="fas fa-heart"></i>
+            <span>LifeShare</span>
+        </div>
+        <div class="footer-text">
+            <p class="footer-organization">সাদাকাহ ফান্ড দ্বারা পরিচালিত একটি কার্যক্রম</p>
+            <p class="footer-subtitle">A initiative powered by Sadaqah Fund</p>
+        </div>
+        <div class="footer-social">
+            <a href="#" class="social-link" title="Facebook">
+                <i class="fab fa-facebook-f"></i>
+            </a>
+            <a href="#" class="social-link" title="Email">
+                <i class="fas fa-envelope"></i>
+            </a>
+            <a href="#" class="social-link" title="Phone">
+                <i class="fas fa-phone"></i>
+            </a>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <p>&copy; 2024 LifeShare Blood Donor Network. All rights reserved.</p>
+    </div>
+</footer>
     </div>
 
     <script>
     // =============================================
     // CLOUD STORAGE WITH JSONBIN.IO (FIXED VERSION)
     // =============================================
-        // Image compression function
-function compressImage(dataUrl, maxWidth = 150, quality = 0.7) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = function() {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // Calculate new dimensions
-            let width = img.width;
-            let height = img.height;
-            
-            if (width > maxWidth) {
-                height = (height * maxWidth) / width;
-                width = maxWidth;
-            }
-            
-            canvas.width = width;
-            canvas.height = height;
-            
-            ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', quality));
-        };
-        img.src = dataUrl;
-    });
-}
     
+    // Image compression function
+    function compressImage(dataUrl, maxWidth = 150, quality = 0.7) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Calculate new dimensions
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > maxWidth) {
+                    height = (height * maxWidth) / width;
+                    width = maxWidth;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.src = dataUrl;
+        });
+    }
+
     class CloudStorage {
         constructor() {
             // Fixed JSONBin.io configuration
@@ -1311,44 +1462,45 @@ function compressImage(dataUrl, maxWidth = 150, quality = 0.7) {
         }
 
         async saveDonors(donors) {
-    try {
-        console.log('💾 Saving donors to JSONBin.io...');
-        
-        // Keep profile pictures but compress them for size
-        const donorsWithCompressedImages = donors.map(donor => {
-            if (donor.profilePicture && donor.profilePicture.length > 10000) {
-                // If image is too large, remove it to avoid size limits
-                const { profilePicture, ...donorWithoutImage } = donor;
-                return donorWithoutImage;
+            try {
+                console.log('💾 Saving donors to JSONBin.io...');
+                
+                // Keep profile pictures but handle large ones
+                const donorsForCloud = donors.map(donor => {
+                    // If image is too large, remove it to avoid size limits
+                    if (donor.profilePicture && donor.profilePicture.length > 50000) {
+                        const { profilePicture, ...donorWithoutImage } = donor;
+                        return { ...donorWithoutImage, hasProfilePicture: true };
+                    }
+                    return donor;
+                });
+                
+                const response = await fetch(`${this.baseUrl}/${this.binId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': this.apiKey
+                    },
+                    body: JSON.stringify({ donors: donorsForCloud })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                console.log('✅ Donors saved to JSONBin.io');
+                
+                // Update localStorage with full data including images
+                localStorage.setItem('lifeshare-donors', JSON.stringify(donors));
+                
+                return true;
+            } catch (error) {
+                console.error('❌ Error saving to JSONBin.io:', error);
+                console.log('🔄 Falling back to localStorage...');
+                return this.saveToLocalStorage(donors);
             }
-            return donor;
-        });
-        
-        const response = await fetch(`${this.baseUrl}/${this.binId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Master-Key': this.apiKey
-            },
-            body: JSON.stringify({ donors: donorsWithCompressedImages })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
-        console.log('✅ Donors saved to JSONBin.io');
-        
-        // Update localStorage
-        localStorage.setItem('lifeshare-donors', JSON.stringify(donors));
-        
-        return true;
-    } catch (error) {
-        console.error('❌ Error saving to JSONBin.io:', error);
-        console.log('🔄 Falling back to localStorage...');
-        return this.saveToLocalStorage(donors);
-    }
-}
+
         async addDonor(donor) {
             const donors = await this.loadDonors();
             
@@ -1361,7 +1513,7 @@ function compressImage(dataUrl, maxWidth = 150, quality = 0.7) {
             const success = await this.saveDonors(donors);
             
             if (success) {
-                console.log('✅ Donor added successfully:', donor);
+                console.log('✅ Donor added successfully');
                 return true;
             } else {
                 console.error('❌ Failed to add donor');
@@ -1558,49 +1710,49 @@ function compressImage(dataUrl, maxWidth = 150, quality = 0.7) {
             const donorCard = document.createElement('div');
             donorCard.className = 'donor-card';
             donorCard.innerHTML = `
-    <div class="profile-picture-container">
-        ${donor.profilePicture ? 
-            `<img src="${donor.profilePicture}" class="profile-picture" alt="${donor.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
-            ''
-        }
-        <div class="profile-picture-placeholder" style="${donor.profilePicture ? 'display:none' : 'display:flex'}">
-            <i class="fas fa-user"></i>
-        </div>
-    </div>
-    
-    <div class="donor-blood">${donor.bloodType || 'Unknown'}</div>
-    <div class="donor-name">${donor.name}</div>
-    
-    <div class="donor-location">
-        <i class="fas fa-map-marker-alt"></i>
-        ${donor.district}, ${donor.city}
-    </div>
-    
-    <div class="donor-contact">
-        <a href="tel:${donor.phone}">
-            <i class="fas fa-phone"></i>
-            ${donor.phone}
-        </a>
-    </div>
-    
-    <div class="donor-status ${statusClass}">
-        <i class="fas ${eligibility.icon}"></i>
-        ${eligibility.message}
-    </div>
-    
-    <div class="donor-actions">
-        <button class="btn btn-outline btn-small edit-donor" data-id="${donor.id}">
-            <i class="fas fa-edit"></i>
-            Update
-        </button>
-        ${isAdminLoggedIn ? `
-            <button class="btn btn-danger btn-small delete-donor" data-id="${donor.id}">
-                <i class="fas fa-trash"></i>
-                Delete
-            </button>
-        ` : ''}
-    </div>
-`;
+                <div class="profile-picture-container">
+                    ${donor.profilePicture ? 
+                        `<img src="${donor.profilePicture}" class="profile-picture" alt="${donor.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
+                        ''
+                    }
+                    <div class="profile-picture-placeholder" style="${donor.profilePicture ? 'display:none' : 'display:flex'}">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+                
+                <div class="donor-blood">${donor.bloodType || 'Unknown'}</div>
+                <div class="donor-name">${donor.name}</div>
+                
+                <div class="donor-location">
+                    <i class="fas fa-map-marker-alt"></i>
+                    ${donor.district}, ${donor.city}
+                </div>
+                
+                <div class="donor-contact">
+                    <a href="tel:${donor.phone}">
+                        <i class="fas fa-phone"></i>
+                        ${donor.phone}
+                    </a>
+                </div>
+                
+                <div class="donor-status ${statusClass}">
+                    <i class="fas ${eligibility.icon}"></i>
+                    ${eligibility.message}
+                </div>
+                
+                <div class="donor-actions">
+                    <button class="btn btn-outline btn-small edit-donor" data-id="${donor.id}">
+                        <i class="fas fa-edit"></i>
+                        Update
+                    </button>
+                    ${isAdminLoggedIn ? `
+                        <button class="btn btn-danger btn-small delete-donor" data-id="${donor.id}">
+                            <i class="fas fa-trash"></i>
+                            Delete
+                        </button>
+                    ` : ''}
+                </div>
+            `;
             donorsList.appendChild(donorCard);
         });
         
@@ -1729,28 +1881,27 @@ function compressImage(dataUrl, maxWidth = 150, quality = 0.7) {
         
         try {
             const profilePictureInput = document.getElementById('registerProfilePicture');
-            let profilePicture = null;
             
             if (profilePictureInput.files[0]) {
                 const reader = new FileReader();
                 reader.onload = async function(e) {
-    // Compress image if it's too large
-    let profilePicture = e.target.result;
-    if (profilePicture.length > 100000) { // If larger than 100KB
-        profilePicture = await compressImage(profilePicture);
-    }
-    
-    const newDonor = {
-        name,
-        bloodType,
-        district,
-        city,
-        phone,
-        lastDonation,
-        profilePicture: profilePicture
-    };
-    
-    const success = await dataStorage.addDonor(newDonor);
+                    // Compress image if it's too large
+                    let compressedImage = e.target.result;
+                    if (compressedImage.length > 100000) {
+                        compressedImage = await compressImage(compressedImage);
+                    }
+                    
+                    const newDonor = {
+                        name,
+                        bloodType,
+                        district,
+                        city,
+                        phone,
+                        lastDonation,
+                        profilePicture: compressedImage
+                    };
+                    
+                    const success = await dataStorage.addDonor(newDonor);
                     
                     if (success) {
                         await displayDonors();
@@ -1826,7 +1977,13 @@ function compressImage(dataUrl, maxWidth = 150, quality = 0.7) {
         if (profilePictureInput.files[0]) {
             const reader = new FileReader();
             reader.onload = async function(e) {
-                updatedData.profilePicture = e.target.result;
+                // Compress image if it's too large
+                let compressedImage = e.target.result;
+                if (compressedImage.length > 100000) {
+                    compressedImage = await compressImage(compressedImage);
+                }
+                
+                updatedData.profilePicture = compressedImage;
                 const success = await dataStorage.updateDonor(id, updatedData);
                 if (success) {
                     showNotification('✅ Your information has been updated successfully!', 'success');
@@ -2059,5 +2216,6 @@ function compressImage(dataUrl, maxWidth = 150, quality = 0.7) {
         }, 1000);
     });
 </script>
+
 </body>
 </html>
